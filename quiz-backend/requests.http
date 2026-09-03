@@ -1,0 +1,118 @@
+@baseUrl = http://localhost:8080
+### Register a student
+# @name registerStudent
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "Student One",
+  "email": "student@example.com",
+  "password": "pass123",
+  "role": "student"
+}
+
+### Register a teacher
+# @name registerTeacher
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "Teacher One",
+  "email": "teacher@example.com",
+  "password": "pass123",
+  "role": "teacher"
+}
+
+### Login as student
+# @name loginStudent
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "student@example.com",
+  "password": "pass123"
+}
+
+### Login as teacher
+# @name loginTeacher
+POST {{baseUrl}}/login
+Content-Type: application/json
+
+{
+  "email": "teacher@example.com",
+  "password": "pass123"
+}
+
+### Student tries to create a quiz — should be 403
+POST {{baseUrl}}/quizzes
+Authorization: Bearer {{loginStudent.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "title": "Should Fail",
+  "description": "student cannot create this",
+  "duration_minutes": 10
+}
+
+### Teacher creates a quiz — should succeed
+POST {{baseUrl}}/quizzes
+Authorization: Bearer {{loginTeacher.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "title": "Teacher Quiz",
+  "description": "teacher can create this",
+  "duration_minutes": 10
+}
+
+### TEST A - no role field at all (should default to student)
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "Test No Role",
+  "email": "noroleuser1@example.com",
+  "password": "pass123"
+}
+
+### Empty title — should be 400 with clear message
+POST {{baseUrl}}/quizzes
+Authorization: Bearer {{loginTeacher.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "description": "test",
+  "duration_minutes": 10
+}
+
+### Negative duration — should be 400
+POST {{baseUrl}}/quizzes
+Authorization: Bearer {{loginTeacher.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "title": "Valid Title",
+  "description": "test",
+  "duration_minutes": -5
+}
+
+### Invalid email — should be 400
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "Bad Email",
+  "email": "not-an-email",
+  "password": "pass12345"
+}
+
+### Short password — should be 400
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "Short Pass",
+  "email": "shortpass@example.com",
+  "password": "abc"
+}
