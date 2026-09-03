@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"quiz-backend/service"
+	"strings"
 )
 
 type QuizHandler struct {
@@ -39,8 +40,9 @@ func (h *QuizHandler) GetQuizByID(w http.ResponseWriter, r *http.Request) {
 
 func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 	var input struct {
-		Title       string `json:"title"`
-		Description string `json:"description"`
+		Title           string `json:"title"`
+		Description     string `json:"description"`
+		DurationMinutes int    `json:"duration_minutes"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
@@ -48,7 +50,17 @@ func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quiz, err := h.service.CreateQuiz(r.Context(), input.Title, input.Description)
+	if strings.TrimSpace(input.Title) == "" {
+		http.Error(w, "title is required", http.StatusBadRequest)
+		return
+	}
+
+	if input.DurationMinutes <= 0 {
+		http.Error(w, "duration_minutes must be positive", http.StatusBadRequest)
+		return
+	}
+
+	quiz, err := h.service.CreateQuiz(r.Context(), input.Title, input.Description, input.DurationMinutes)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
