@@ -8,17 +8,16 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"quiz-backend/model"
-	"quiz-backend/repository"
 	"time"
 )
 
 var jwtSecret = []byte("temporary-dev-secret-change-me")
 
 type AuthService struct {
-	userRepo *repository.UserRepository
+	userRepo UserRepo
 }
 
-func NewAuthService(userRepo *repository.UserRepository) *AuthService {
+func NewAuthService(userRepo UserRepo) *AuthService {
 	return &AuthService{userRepo: userRepo}
 }
 

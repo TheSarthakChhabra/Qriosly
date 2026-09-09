@@ -5,15 +5,14 @@ import (
 	"errors"
 	"github.com/google/uuid"
 	"quiz-backend/model"
-	"quiz-backend/repository"
 )
 
 type OptionService struct {
-	optionRepo   *repository.OptionRepository
-	questionRepo *repository.QuestionRepository
+	optionRepo   OptionRepo
+	questionRepo QuestionRepo
 }
 
-func NewOptionService(optionRepo *repository.OptionRepository, questionRepo *repository.QuestionRepository) *OptionService {
+func NewOptionService(optionRepo OptionRepo, questionRepo QuestionRepo) *OptionService {
 	return &OptionService{optionRepo: optionRepo, questionRepo: questionRepo}
 }
 

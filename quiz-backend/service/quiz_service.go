@@ -2,26 +2,34 @@ package service
 
 import (
 	"context"
+	"errors"
 	"quiz-backend/model"
-	"quiz-backend/repository"
+	"strings"
 
 	"github.com/google/uuid"
 )
 
 type QuizService struct {
-	repo *repository.QuizRepository
+	repo QuizRepo
 }
 
-func NewQuizService(repo *repository.QuizRepository) *QuizService {
+func NewQuizService(repo QuizRepo) *QuizService {
 	return &QuizService{repo: repo}
 }
 
-func (s *QuizService) CreateQuiz(ctx context.Context, title, description string, durationMinutes int) (model.Quiz, error) {
+func (s *QuizService) CreateQuiz(ctx context.Context, title, description string, durationMinutes int, createdBy string) (model.Quiz, error) {
+	if strings.TrimSpace(title) ==""{
+		return model.Quiz{}, errors.New("title is required")
+	}
+	if durationMinutes <= 0{
+		return model.Quiz{}, errors.New("duration must be positive")
+	}
 	q := model.Quiz{
-		ID:          uuid.NewString(),
-		Title:       title,
-		Description: description,
+		ID:              uuid.NewString(),
+		Title:           title,
+		Description:     description,
 		DurationMinutes: durationMinutes,
+		CreatedBy:       createdBy,
 	}
 	if err := s.repo.Save(ctx, q); err != nil {
 		return model.Quiz{}, err

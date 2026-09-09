@@ -20,8 +20,8 @@ func NewQuizRepository(db *pgxpool.Pool) *QuizRepository {
 
 func (r *QuizRepository) Save(ctx context.Context, q model.Quiz) error {
 	_, err := r.db.Exec(ctx,
-		`INSERT INTO quizzes (id, title, description, duration_minutes) VALUES($1, $2, $3, $4)`,
-		q.ID, q.Title, q.Description, q.DurationMinutes,
+		`INSERT INTO quizzes (id, title, description, duration_minutes, created_by) VALUES($1, $2, $3, $4, $5)`,
+		q.ID, q.Title, q.Description, q.DurationMinutes, q.CreatedBy,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to save quiz: %w", err)
@@ -30,7 +30,7 @@ func (r *QuizRepository) Save(ctx context.Context, q model.Quiz) error {
 }
 
 func (r *QuizRepository) FindAll(ctx context.Context) ([]model.Quiz, error) {
-	rows, err := r.db.Query(ctx, `SELECT id, title, description, duration_minutes FROM quizzes`)
+	rows, err := r.db.Query(ctx, `SELECT id, title, description, duration_minutes, created_by FROM quizzes`)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query quizzes: %w", err)
 	}
@@ -38,8 +38,12 @@ func (r *QuizRepository) FindAll(ctx context.Context) ([]model.Quiz, error) {
 	var quizzes []model.Quiz
 	for rows.Next() {
 		var q model.Quiz
-		if err := rows.Scan(&q.ID, &q.Title, &q.Description, &q.DurationMinutes); err != nil {
+		var createdBy *string
+		if err := rows.Scan(&q.ID, &q.Title, &q.Description, &q.DurationMinutes, &createdBy); err != nil {
 			return nil, fmt.Errorf("failed to scan quiz: %w", err)
+		}
+		if createdBy !=nil{
+			q.CreatedBy = *createdBy
 		}
 		quizzes = append(quizzes, q)
 	}
@@ -51,14 +55,18 @@ func (r *QuizRepository) FindAll(ctx context.Context) ([]model.Quiz, error) {
 
 func (r *QuizRepository) FindByID(ctx context.Context, id string) (model.Quiz, error) {
 	var q model.Quiz
+	var createdBy *string
 	err := r.db.QueryRow(ctx,
-		`SELECT id, title, description, duration_minutes FROM quizzes WHERE id = $1`, id,
-	).Scan(&q.ID, &q.Title, &q.Description, &q.DurationMinutes)
+		`SELECT id, title, description, duration_minutes, created_by FROM quizzes WHERE id = $1`, id,
+	).Scan(&q.ID, &q.Title, &q.Description, &q.DurationMinutes, &createdBy)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return model.Quiz{}, errors.New("quiz not found")
 		}
 		return model.Quiz{}, fmt.Errorf("failed to find quiz: %w", err)
+	}
+	if createdBy != nil{
+		q.CreatedBy = *createdBy
 	}
 	return q, nil
 }

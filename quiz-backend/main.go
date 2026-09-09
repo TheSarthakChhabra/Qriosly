@@ -6,8 +6,8 @@ import (
 	"log"
 	"net/http"
 	"quiz-backend/handler"
-	"quiz-backend/repository"
 	"quiz-backend/model"
+	"quiz-backend/repository"
 	"quiz-backend/service"
 )
 
@@ -89,6 +89,19 @@ func main() {
 				http.HandlerFunc(optionHandler.CreateOption),
 			),
 		),
+	)
+	mux.Handle("GET /attempts/{attemptID}",
+		handler.AuthMiddleware(http.HandlerFunc(attemptHandler.GetAttemptByID)),
+	)
+
+	mux.Handle("GET /my-attempts",
+		handler.AuthMiddleware(http.HandlerFunc(attemptHandler.GetMyAttempts)),
+	)
+
+	mux.Handle("GET /quizzes/{quizID}/attempts",
+		handler.AuthMiddleware(handler.RequireRole(model.RoleTeacher, model.RoleAdmin)(
+			http.HandlerFunc(attemptHandler.GetAttemptsForQuiz),
+		)),
 	)
 
 	log.Println("Starting server on :8080")
