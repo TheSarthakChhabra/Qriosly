@@ -3,25 +3,22 @@ package service
 import (
 	"context"
 	"errors"
-
 	"quiz-backend/model"
-	"quiz-backend/repository"
-
 	"github.com/google/uuid"
 )
 
 type AnswerService struct {
-	answerRepo   *repository.AnswerRepository
-	attemptRepo  *repository.AttemptRepository
-	questionRepo *repository.QuestionRepository
-	optionRepo   *repository.OptionRepository
+	answerRepo   AnswerRepo
+	attemptRepo  AttemptRepo
+	questionRepo QuestionRepo
+	optionRepo   OptionRepo
 }
 
 func NewAnswerService(
-	answerRepo *repository.AnswerRepository,
-	attemptRepo *repository.AttemptRepository,
-	questionRepo *repository.QuestionRepository,
-	optionRepo *repository.OptionRepository,
+	answerRepo AnswerRepo,
+	attemptRepo AttemptRepo,
+	questionRepo QuestionRepo,
+	optionRepo OptionRepo,
 ) *AnswerService {
 	return &AnswerService{
 		answerRepo:   answerRepo,

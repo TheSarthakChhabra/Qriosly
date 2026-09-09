@@ -45,3 +45,63 @@ func (h *AttemptHandler) SubmitAttempt(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(attempt)
 }
+
+func (h *AttemptHandler) GetAttemptByID(w http.ResponseWriter, r *http.Request) {
+	attemptID := r.PathValue("attemptID")
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "uanauthorised", http.StatusUnauthorized)
+		return
+	}
+
+	role, _ := RoleFromContext(r.Context())
+	attempt, err := h.service.GetAttemptByID(r.Context(), attemptID, userID, role)
+	if err != nil {
+		if err.Error() == "forbidden: you do not have access to this attempt" {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(attempt)
+}
+
+func (h *AttemptHandler) GetMyAttempts(w http.ResponseWriter, r *http.Request) {
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	attempts, err := h.service.GetMyAttempts(r.Context(), userID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(attempts)
+}
+
+func (h *AttemptHandler) GetAttemptsForQuiz(w http.ResponseWriter, r *http.Request) {
+	quizID := r.PathValue("quizID")
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	role, _ := RoleFromContext(r.Context())
+	summaries, err := h.service.GetAttemptsForQuiz(r.Context(), quizID, userID, role)
+	if err != nil {
+		if err.Error() == "forbidden: you do not own this quiz" {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+
+		http.Error(w, err.Error(), http.StatusNotFound)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(summaries)
+}

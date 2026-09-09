@@ -3,10 +3,9 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
-	"quiz-backend/model"
-	"quiz-backend/repository"
 	"github.com/google/uuid"
+	"quiz-backend/model"
+	"time"
 )
 
 const mockUserID = "00000000-0000-0000-0000-000000000001"
@@ -17,13 +16,13 @@ const (
 )
 
 type AttemptService struct {
-	attemptRepo *repository.AttemptRepository
-	quizRepo    *repository.QuizRepository
-	answerRepo  *repository.AnswerRepository
-	optionRepo  *repository.OptionRepository
+	attemptRepo AttemptRepo
+	quizRepo    QuizRepo
+	answerRepo  AnswerRepo
+	optionRepo  OptionRepo
 }
 
-func NewAttemptService(attemptRepo *repository.AttemptRepository, quizRepo *repository.QuizRepository, answerRepo *repository.AnswerRepository, optionRepo *repository.OptionRepository) *AttemptService {
+func NewAttemptService(attemptRepo AttemptRepo, quizRepo QuizRepo, answerRepo AnswerRepo, optionRepo OptionRepo) *AttemptService {
 	return &AttemptService{attemptRepo: attemptRepo, quizRepo: quizRepo, answerRepo: answerRepo, optionRepo: optionRepo}
 }
 
@@ -87,4 +86,41 @@ func (s *AttemptService) SubmitAttempt(ctx context.Context, attemptID string) (m
 	attempt.SubmittedAt = &submittedAt
 	attempt.Score = &score
 	return attempt, nil
+}
+
+func (s *AttemptService) GetAttemptByID(ctx context.Context, attemptID, requesterID, requesterRole string) (model.Attempt, error) {
+	attempt, err := s.attemptRepo.FindByID(ctx, attemptID)
+	if err != nil {
+		return model.Attempt{}, errors.New("attempt not found")
+	}
+
+	if requesterRole == model.RoleAdmin {
+		return attempt, nil
+	}
+	if requesterID == attempt.UserID {
+		return attempt, nil
+	}
+	if requesterRole == model.RoleTeacher {
+		quiz, err := s.quizRepo.FindByID(ctx, attempt.QuizID)
+		if err == nil && quiz.CreatedBy == requesterID {
+			return attempt, nil
+		}
+	}
+	return model.Attempt{}, errors.New("forbidden: you do not have access to this attempt")
+}
+
+func (s *AttemptService) GetMyAttempts(ctx context.Context, userID string) ([]model.Attempt, error) {
+	return s.attemptRepo.FindByUserID(ctx, userID)
+}
+
+func (s *AttemptService) GetAttemptsForQuiz(ctx context.Context, quizID, requesterID, requesterRole string) ([]model.AttemptSummary, error) {
+	quiz, err := s.quizRepo.FindByID(ctx, quizID)
+	if err != nil {
+		return nil, errors.New("quiz not found")
+	}
+
+	if requesterRole != model.RoleAdmin && quiz.CreatedBy != requesterID {
+		return nil, errors.New("forbidden: you don not own this quiz")
+	}
+	return s.attemptRepo.FindSummariesByQuizID(ctx, quizID)
 }

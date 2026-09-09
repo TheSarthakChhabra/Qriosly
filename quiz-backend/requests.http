@@ -42,6 +42,10 @@ Content-Type: application/json
   "email": "teacher@example.com",
   "password": "pass123"
 }
+###
+# @name startAttempt
+POST {{baseUrl}}/quizzes/b5e809c8-c40e-4455-b499-31f07a819572/attempts
+Authorization: Bearer {{loginStudent.response.body.$.token}}
 
 ### Student tries to create a quiz — should be 403
 POST {{baseUrl}}/quizzes
@@ -116,3 +120,22 @@ Content-Type: application/json
   "email": "shortpass@example.com",
   "password": "abc"
 }
+### Submit it
+POST {{baseUrl}}/attempts/{{startAttempt.response.body.$.id}}/submit
+Authorization: Bearer {{loginStudent.response.body.$.token}}
+
+### Now view it — reuse the same captured id
+GET {{baseUrl}}/attempts/{{startAttempt.response.body.$.id}}
+Authorization: Bearer {{loginStudent.response.body.$.token}}
+
+### Student views their own attempt history
+GET {{baseUrl}}/my-attempts
+Authorization: Bearer {{loginStudent.response.body.$.token}}
+
+### Teacher (owner) views attempts for their quiz — should succeed, with student info
+GET {{baseUrl}}/quizzes/{b5e809c8-c40e-4455-b499-31f07a819572}/attempts
+Authorization: Bearer {{loginTeacher.response.body.$.token}}
+
+### A student tries the teacher endpoint — should be 403 (wrong role)
+GET {{baseUrl}}/quizzes/{b5e809c8-c40e-4455-b499-31f07a819572}/attempts
+Authorization: Bearer {{loginStudent.response.body.$.token}}

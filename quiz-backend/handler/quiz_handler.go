@@ -60,7 +60,13 @@ func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	quiz, err := h.service.CreateQuiz(r.Context(), input.Title, input.Description, input.DurationMinutes)
+	userID, ok := UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	quiz, err := h.service.CreateQuiz(r.Context(), input.Title, input.Description, input.DurationMinutes, userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

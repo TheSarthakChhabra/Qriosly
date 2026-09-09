@@ -4,16 +4,15 @@ import (
 	"context"
 	"errors"
 	"quiz-backend/model"
-	"quiz-backend/repository"
 	"github.com/google/uuid"
 )
 
 type QuestionService struct {
-	questionRepo *repository.QuestionRepository
-	quizRepo     *repository.QuizRepository
+	questionRepo QuestionRepo
+	quizRepo     QuizRepo
 }
 
-func NewQuestionService(questionRepo *repository.QuestionRepository, quizRepo *repository.QuizRepository) *QuestionService {
+func NewQuestionService(questionRepo QuestionRepo, quizRepo QuizRepo) *QuestionService {
 	return &QuestionService{questionRepo: questionRepo, quizRepo: quizRepo}
 }
 
