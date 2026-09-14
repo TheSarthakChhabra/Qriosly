@@ -3,8 +3,8 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"quiz-backend/apperror"
 	"quiz-backend/service"
-	"strings"
 )
 
 type QuizHandler struct {
@@ -46,32 +46,20 @@ func (h *QuizHandler) CreateQuiz(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
-		http.Error(w, "invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if strings.TrimSpace(input.Title) == "" {
-		http.Error(w, "title is required", http.StatusBadRequest)
-		return
-	}
-
-	if input.DurationMinutes <= 0 {
-		http.Error(w, "duration_minutes must be positive", http.StatusBadRequest)
+		writeError(w, apperror.BadRequest("INVALID_BODY", "invalid request body"))
 		return
 	}
 
 	userID, ok := UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		writeError(w, apperror.Unauthorized("UNAUTHENTICATED", "authentication required"))
 		return
 	}
 
 	quiz, err := h.service.CreateQuiz(r.Context(), input.Title, input.Description, input.DurationMinutes, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		writeError(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(quiz)
+	writeJSON(w, http.StatusCreated, quiz)
 }

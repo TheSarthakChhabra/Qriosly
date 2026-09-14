@@ -155,3 +155,30 @@ func (r *AttemptRepository) FindSummariesByQuizID(ctx context.Context, quizID st
 	}
 	return summaries, nil
 }
+
+func (r *AttemptRepository) FindByIDForUpdate(ctx context.Context, tx pgx.Tx, id string) (model.Attempt, error) {
+	var a model.Attempt
+	err := tx.QueryRow(ctx,
+		`SELECT id, quiz_id, user_id, started_at, status, submitted_at, score FROM attempts WHERE id = $1 FOR UPDATE`,
+		id,
+	).Scan(&a.ID, &a.QuizID, &a.UserID, &a.StartedAt, &a.Status, &a.SubmittedAt, &a.Score)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Attempt{}, errors.New("attempt not found")
+		}
+		return model.Attempt{}, fmt.Errorf("failed to find attempt for update: %w", err)
+	}
+	return a, nil
+}
+
+func (r *AttemptRepository) MarkSubmittedTx(ctx context.Context, tx pgx.Tx, id, status string, submittedAt time.Time, score int) error {
+	_, err := tx.Exec(ctx,
+		`UPDATE attempts SET status = $1, submitted_at = $2, score = $3 WHERE id = $4`,
+		status, submittedAt, score, id,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to mark attempt submitted: %w", err)
+	}
+	return nil
+}

@@ -1,11 +1,12 @@
 package repository
+
 import (
 	"context"
-	"fmt"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5"
-	"quiz-backend/model"
 	"errors"
+	"fmt"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"quiz-backend/model"
 )
 
 type OptionRepository struct {
@@ -62,5 +63,20 @@ func (r *OptionRepository) FindByID(ctx context.Context, id string) (model.Optio
 		return model.Option{}, fmt.Errorf("failed to find option: %w", err)
 	}
 
+	return o, nil
+}
+
+func (r *OptionRepository) FindByIDTx(ctx context.Context, tx pgx.Tx, id string) (model.Option, error) {
+	var o model.Option
+	err := tx.QueryRow(ctx,
+		`SELECT id, question_id, text, is_correct FROM options WHERE id = $1`, id,
+	).Scan(&o.ID, &o.QuestionID, &o.Text, &o.IsCorrect)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return model.Option{}, errors.New("option not found")
+		}
+		return model.Option{}, fmt.Errorf("failed to find option: %w", err)
+	}
 	return o, nil
 }

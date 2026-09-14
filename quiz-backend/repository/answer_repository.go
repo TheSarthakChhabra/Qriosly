@@ -2,12 +2,12 @@ package repository
 
 import (
 	"context"
-	"fmt"
 	"errors"
+	"fmt"
 	"quiz-backend/model"
 
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AnswerRepository struct {
@@ -55,4 +55,24 @@ func (r *AnswerRepository) UpdateSelectedOption(ctx context.Context, answerID, s
 		return fmt.Errorf("failed to update answer: %w", err)
 	}
 	return nil
+}
+
+func (r *AnswerRepository) FindByAttemptIDTx(ctx context.Context, tx pgx.Tx, attemptID string) ([]model.Answer, error) {
+	rows, err := tx.Query(ctx,
+		`SELECT id, attempt_id, question_id, selected_option_id FROM answers WHERE attempt_id = $1`, attemptID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query answers: %w", err)
+	}
+	defer rows.Close()
+
+	var answers []model.Answer
+	for rows.Next() {
+		var a model.Answer
+		if err := rows.Scan(&a.ID, &a.AttemptID, &a.QuestionID, &a.SelectedOptionID); err != nil {
+			return nil, fmt.Errorf("failed to scan answer row: %w", err)
+		}
+		answers = append(answers, a)
+	}
+	return answers, rows.Err()
 }

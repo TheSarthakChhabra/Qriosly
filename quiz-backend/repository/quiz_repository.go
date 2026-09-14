@@ -35,7 +35,7 @@ func (r *QuizRepository) FindAll(ctx context.Context) ([]model.Quiz, error) {
 		return nil, fmt.Errorf("failed to query quizzes: %w", err)
 	}
 	defer rows.Close()
-	var quizzes []model.Quiz
+	quizzes := []model.Quiz{}
 	for rows.Next() {
 		var q model.Quiz
 		var createdBy *string
