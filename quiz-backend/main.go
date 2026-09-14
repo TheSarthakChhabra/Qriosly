@@ -3,8 +3,11 @@ package main
 import (
 	"context"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"log"
 	"net/http"
+	"quiz-backend/config"
 	"quiz-backend/handler"
 	"quiz-backend/model"
 	"quiz-backend/repository"
@@ -12,9 +15,16 @@ import (
 )
 
 func main() {
+	if err := godotenv.Load(); err != nil {
+		log.Println("no .env file found, relying on real environment variables")
+	}
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("invalid configuration: %v", err)
+	}
 	ctx := context.Background()
-	dbURL := "postgres://quizuser:quizpass@localhost:5432/quizdb"
-	pool, err := pgxpool.New(ctx, dbURL)
+
+	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
 		log.Fatalf("unable to create connection pool: %v", err)
 	}
@@ -51,7 +61,7 @@ func main() {
 	attemptRepo := repository.NewAttemptRepository(pool)
 	answerService := service.NewAnswerService(answerRepo, attemptRepo, questionRepo, optionRepo)
 	answerHandler := handler.NewAnswerHandler(answerService)
-	attemptService := service.NewAttemptService(attemptRepo, quizRepo, answerRepo, optionRepo)
+	attemptService := service.NewAttemptService(attemptRepo, quizRepo, answerRepo, optionRepo, pool)
 	attemptHandler := handler.NewAttemptHandler(attemptService)
 
 	mux.HandleFunc("POST /attempts/{attemptID}/submit", attemptHandler.SubmitAttempt)
@@ -60,15 +70,15 @@ func main() {
 	mux.HandleFunc("PUT /attempts/{attemptID}/answers/{questionID}", answerHandler.UpdateAnswer)
 
 	userRepo := repository.NewUserRepository(pool)
-	authService := service.NewAuthService(userRepo)
+	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	authHandler := handler.NewAuthHandler(authService)
 
 	mux.HandleFunc("POST /register", authHandler.Register)
 	mux.HandleFunc("POST /login", authHandler.Login)
-	mux.Handle("POST /quizzes/{id}/attempts", handler.AuthMiddleware(http.HandlerFunc(attemptHandler.StartAttempt)))
+	mux.Handle("POST /quizzes/{id}/attempts", handler.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(attemptHandler.StartAttempt)))
 
 	mux.Handle("POST /quizzes",
-		handler.AuthMiddleware(
+		handler.AuthMiddleware(cfg.JWTSecret)(
 			handler.RequireRole(model.RoleTeacher, model.RoleAdmin)(
 				http.HandlerFunc(quizHandler.CreateQuiz),
 			),
@@ -76,7 +86,7 @@ func main() {
 	)
 
 	mux.Handle("POST /quizzes/{id}/questions",
-		handler.AuthMiddleware(
+		handler.AuthMiddleware(cfg.JWTSecret)(
 			handler.RequireRole(model.RoleTeacher, model.RoleAdmin)(
 				http.HandlerFunc(questionHandler.CreateQuestion),
 			),
@@ -84,26 +94,33 @@ func main() {
 	)
 
 	mux.Handle("POST /questions/{id}/options",
-		handler.AuthMiddleware(
+		handler.AuthMiddleware(cfg.JWTSecret)(
 			handler.RequireRole(model.RoleTeacher, model.RoleAdmin)(
 				http.HandlerFunc(optionHandler.CreateOption),
 			),
 		),
 	)
 	mux.Handle("GET /attempts/{attemptID}",
-		handler.AuthMiddleware(http.HandlerFunc(attemptHandler.GetAttemptByID)),
+		handler.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(attemptHandler.GetAttemptByID)),
 	)
 
 	mux.Handle("GET /my-attempts",
-		handler.AuthMiddleware(http.HandlerFunc(attemptHandler.GetMyAttempts)),
+		handler.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(attemptHandler.GetMyAttempts)),
 	)
 
 	mux.Handle("GET /quizzes/{quizID}/attempts",
-		handler.AuthMiddleware(handler.RequireRole(model.RoleTeacher, model.RoleAdmin)(
+		handler.AuthMiddleware(cfg.JWTSecret)(handler.RequireRole(model.RoleTeacher, model.RoleAdmin)(
 			http.HandlerFunc(attemptHandler.GetAttemptsForQuiz),
 		)),
 	)
 
-	log.Println("Starting server on :8080")
-	log.Fatal(http.ListenAndServe(":8080", mux))
+	mux.HandleFunc("GET /docs/openapi.yaml", func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, "docs/openapi.yaml")
+	})
+	mux.Handle("/swagger/", httpSwagger.Handler(
+		httpSwagger.URL("/docs/openapi.yaml"),
+	))
+
+	log.Printf("Starting server in %s mode on :%s", cfg.Environment, cfg.ServerPort)
+	log.Fatal(http.ListenAndServe(":"+cfg.ServerPort, mux))
 }

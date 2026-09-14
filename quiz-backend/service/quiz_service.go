@@ -2,7 +2,7 @@ package service
 
 import (
 	"context"
-	"errors"
+	"quiz-backend/apperror"
 	"quiz-backend/model"
 	"strings"
 
@@ -18,11 +18,11 @@ func NewQuizService(repo QuizRepo) *QuizService {
 }
 
 func (s *QuizService) CreateQuiz(ctx context.Context, title, description string, durationMinutes int, createdBy string) (model.Quiz, error) {
-	if strings.TrimSpace(title) ==""{
-		return model.Quiz{}, errors.New("title is required")
+	if strings.TrimSpace(title) == "" {
+		return model.Quiz{}, apperror.BadRequest("VALIDATION_ERROR", "title is required")
 	}
-	if durationMinutes <= 0{
-		return model.Quiz{}, errors.New("duration must be positive")
+	if durationMinutes <= 0 {
+		return model.Quiz{}, apperror.BadRequest("VALIDATION_ERROR", "duration_minutes must be greater than 0")
 	}
 	q := model.Quiz{
 		ID:              uuid.NewString(),
@@ -32,7 +32,7 @@ func (s *QuizService) CreateQuiz(ctx context.Context, title, description string,
 		CreatedBy:       createdBy,
 	}
 	if err := s.repo.Save(ctx, q); err != nil {
-		return model.Quiz{}, err
+		return model.Quiz{}, apperror.Internal("QUIZ_SAVE_FAILED", "failed to save quiz")
 	}
 	return q, nil
 }
@@ -42,5 +42,9 @@ func (s *QuizService) GetAllQuizzes(ctx context.Context) ([]model.Quiz, error) {
 }
 
 func (s *QuizService) GetQuizByID(ctx context.Context, id string) (model.Quiz, error) {
-	return s.repo.FindByID(ctx, id)
+	quiz, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return model.Quiz{}, apperror.NotFound("QUIZ_NOT_FOUND", "Quiz not found")
+	}
+	return quiz, nil
 }

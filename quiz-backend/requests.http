@@ -139,3 +139,28 @@ Authorization: Bearer {{loginTeacher.response.body.$.token}}
 ### A student tries the teacher endpoint — should be 403 (wrong role)
 GET {{baseUrl}}/quizzes/{b5e809c8-c40e-4455-b499-31f07a819572}/attempts
 Authorization: Bearer {{loginStudent.response.body.$.token}}
+
+### Quiz not found — should be 404 with structured error
+GET {{baseUrl}}/quizzes/00000000-0000-0000-0000-000000000000
+Authorization: Bearer {{loginTeacher.response.body.$.token}}
+
+### Duplicate email — should be 409
+POST {{baseUrl}}/register
+Content-Type: application/json
+
+{
+  "name": "Dup",
+  "email": "student@example.com",
+  "password": "pass12345"
+}
+
+### Empty title — should be 400 with VALIDATION_ERROR code
+POST {{baseUrl}}/quizzes
+Authorization: Bearer {{loginTeacher.response.body.$.token}}
+Content-Type: application/json
+
+{
+  "title": "",
+  "description": "test",
+  "duration_minutes": 10
+}

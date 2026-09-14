@@ -1,0 +1,5 @@
+.env
+*.exe
+quiz-backend
+.vscode/
+.DS_Store

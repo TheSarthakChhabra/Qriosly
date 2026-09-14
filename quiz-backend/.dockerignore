@@ -1,0 +1,5 @@
+.env
+.env.backup
+.git
+requests.http
+*.md

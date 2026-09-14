@@ -7,23 +7,23 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
+	"quiz-backend/apperror"
 	"quiz-backend/model"
 	"time"
 )
 
-var jwtSecret = []byte("temporary-dev-secret-change-me")
-
 type AuthService struct {
-	userRepo UserRepo
+	userRepo  UserRepo
+	jwtSecret []byte
 }
 
-func NewAuthService(userRepo UserRepo) *AuthService {
-	return &AuthService{userRepo: userRepo}
+func NewAuthService(userRepo UserRepo, jwtSecret string) *AuthService {
+	return &AuthService{userRepo: userRepo, jwtSecret: []byte(jwtSecret)}
 }
 
 func (s *AuthService) Register(ctx context.Context, name, email, password, role string) (model.User, error) {
 	if _, err := s.userRepo.FindByEmail(ctx, email); err == nil {
-		return model.User{}, errors.New("email already registered")
+		return model.User{}, apperror.Conflict("EMAIL_ALREADY_EXISTS", "A user with this email already exists")
 	}
 
 	if role == "" {
@@ -31,7 +31,7 @@ func (s *AuthService) Register(ctx context.Context, name, email, password, role 
 	}
 
 	if role != model.RoleAdmin && role != model.RoleStudent && role != model.RoleTeacher {
-		return model.User{}, errors.New("invalid role")
+		return model.User{}, apperror.BadRequest("INVALID_ROLE", "Invalid role")
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -56,33 +56,33 @@ func (s *AuthService) Register(ctx context.Context, name, email, password, role 
 func (s *AuthService) Login(ctx context.Context, email, password string) (string, error) {
 	u, err := s.userRepo.FindByEmail(ctx, email)
 	if err != nil {
-		return "", errors.New("invalid email or password")
+		return "", apperror.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(u.PasswordHash), []byte(password)); err != nil {
-		return "", errors.New("invalid email or password")
+		return "", apperror.Unauthorized("INVALID_CREDENTIALS", "invalid email or password")
 	}
 
-	token, err := generateToken(u.ID, u.Role)
+	token, err := s.generateToken(u.ID, u.Role)
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
 	return token, nil
 }
 
-func generateToken(userID, role string) (string, error) {
+func (s *AuthService) generateToken(userID, role string) (string, error) {
 	claims := jwt.MapClaims{
 		"sub":  userID,
 		"role": role,
 		"exp":  time.Now().Add(24 * time.Hour).Unix(),
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtSecret)
+	return token.SignedString(s.jwtSecret)
 }
 
-func ParseToken(tokenString string) (userID, role string, err error) {
+func ParseToken(tokenString, secret string) (userID, role string, err error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
-		return jwtSecret, nil
+		return []byte(secret), nil
 	})
 	if err != nil || !token.Valid {
 		return "", "", errors.New("invalid or expired token")

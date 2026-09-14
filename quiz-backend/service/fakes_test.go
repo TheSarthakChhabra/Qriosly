@@ -5,6 +5,8 @@ import (
 	"errors"
 	"quiz-backend/model"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type fakeQuizRepo struct{ quizzes map[string]model.Quiz }
@@ -88,6 +90,10 @@ func (f *fakeOptionRepo) FindByID(ctx context.Context, id string) (model.Option,
 	return o, nil
 }
 
+func (f *fakeOptionRepo) FindByIDTx(ctx context.Context, tx pgx.Tx, id string) (model.Option, error) {
+	return f.FindByID(ctx, id)
+}
+
 type fakeAttemptRepo struct{ attempts map[string]model.Attempt }
 
 func newFakeAttemptRepo() *fakeAttemptRepo {
@@ -139,6 +145,14 @@ func (f *fakeAttemptRepo) FindByQuizID(ctx context.Context, quizID string) ([]mo
 	return out, nil
 }
 
+func (f *fakeAttemptRepo) FindByIDForUpdate(ctx context.Context, tx pgx.Tx, id string) (model.Attempt, error) {
+	return f.FindByID(ctx, id)
+}
+
+func (f *fakeAttemptRepo) MarkSubmittedTx(ctx context.Context, tx pgx.Tx, id, status string, submittedAt time.Time, score int) error {
+	return f.MarkSubmitted(ctx, id, status, submittedAt, score)
+}
+
 func (f *fakeAttemptRepo) FindSummariesByQuizID(ctx context.Context, quizID string) ([]model.AttemptSummary, error) {
 	return nil, nil
 }
@@ -188,4 +202,8 @@ func (f *fakeAnswerRepo) FindByAttemptAndQuestion(ctx context.Context, attemptID
 		}
 	}
 	return model.Answer{}, errors.New("answer not found")
+}
+
+func (f *fakeAnswerRepo) FindByAttemptIDTx(ctx context.Context, tx pgx.Tx, attemptID string) ([]model.Answer, error) {
+	return f.FindByAttemptID(ctx, attemptID)
 }

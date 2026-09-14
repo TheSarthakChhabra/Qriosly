@@ -4,6 +4,8 @@ import (
 	"context"
 	"quiz-backend/model"
 	"time"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type QuizRepo interface {
@@ -22,11 +24,14 @@ type OptionRepo interface {
 	Save(ctx context.Context, o model.Option) error
 	FindByQuestionID(ctx context.Context, questionID string) ([]model.Option, error)
 	FindByID(ctx context.Context, id string) (model.Option, error)
+	FindByIDTx(ctx context.Context, tx pgx.Tx, id string) (model.Option, error)
 }
 
 type AttemptRepo interface {
 	Save(ctx context.Context, a model.Attempt) error
 	FindByID(ctx context.Context, id string) (model.Attempt, error)
+	FindByIDForUpdate(ctx context.Context, tx pgx.Tx, id string) (model.Attempt, error)
+	MarkSubmittedTx(ctx context.Context, tx pgx.Tx, id, status string, submttedAt time.Time, score int) error
 	MarkSubmitted(ctx context.Context, id, status string, submittedAt time.Time, score int) error
 	FindByUserID(ctx context.Context, userID string) ([]model.Attempt, error)
 	FindByQuizID(ctx context.Context, quizID string) ([]model.Attempt, error)
@@ -38,6 +43,7 @@ type AnswerRepo interface {
 	FindByAttemptAndQuestion(ctx context.Context, attemptID, questionID string) (model.Answer, error)
 	UpdateSelectedOption(ctx context.Context, answerID, selectedOptionID string) error
 	FindByAttemptID(ctx context.Context, attemptID string) ([]model.Answer, error)
+	FindByAttemptIDTx(ctx context.Context, tx pgx.Tx, attemptId string) ([]model.Answer, error)
 }
 
 type UserRepo interface {

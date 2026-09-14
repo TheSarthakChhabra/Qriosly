@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"quiz-backend/apperror"
 	"quiz-backend/service"
 )
 
@@ -50,22 +51,17 @@ func (h *AttemptHandler) GetAttemptByID(w http.ResponseWriter, r *http.Request) 
 	attemptID := r.PathValue("attemptID")
 	userID, ok := UserIDFromContext(r.Context())
 	if !ok {
-		http.Error(w, "uanauthorised", http.StatusUnauthorized)
+		writeError(w, apperror.Unauthorized("UNAUTHENTICATED", "authentication required"))
 		return
 	}
 
 	role, _ := RoleFromContext(r.Context())
 	attempt, err := h.service.GetAttemptByID(r.Context(), attemptID, userID, role)
 	if err != nil {
-		if err.Error() == "forbidden: you do not have access to this attempt" {
-			http.Error(w, err.Error(), http.StatusForbidden)
-			return
-		}
-		http.Error(w, err.Error(), http.StatusNotFound)
+		writeError(w, err)
 		return
 	}
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(attempt)
+	writeJSON(w, http.StatusOK, attempt)
 }
 
 func (h *AttemptHandler) GetMyAttempts(w http.ResponseWriter, r *http.Request) {

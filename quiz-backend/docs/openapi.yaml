@@ -1,0 +1,501 @@
+openapi: 3.0.3
+info:
+  title: Quiz Backend API
+  description: API for creating quizzes, taking attempts, and scoring results.
+  version: "1.0.0"
+
+servers:
+  - url: http://localhost:8080
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              example: QUIZ_NOT_FOUND
+            message:
+              type: string
+              example: Quiz not found
+
+    User:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [student, teacher, admin] }
+        created_at: { type: string, format: date-time }
+
+    Quiz:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        description: { type: string }
+        duration_minutes: { type: integer }
+        created_by: { type: string, format: uuid }
+
+    Question:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        quiz_id: { type: string, format: uuid }
+        text: { type: string }
+
+    Option:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        question_id: { type: string, format: uuid }
+        text: { type: string }
+        is_correct: { type: boolean }
+
+    Attempt:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        quiz_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        status: { type: string, enum: [in_progress, submitted] }
+        started_at: { type: string, format: date-time }
+        submitted_at: { type: string, format: date-time, nullable: true }
+        score: { type: integer, nullable: true }
+
+    AttemptSummary:
+      type: object
+      properties:
+        attempt_id: { type: string, format: uuid }
+        quiz_id: { type: string, format: uuid }
+        user_id: { type: string, format: uuid }
+        user_name: { type: string }
+        user_email: { type: string }
+        status: { type: string, enum: [in_progress, submitted] }
+        started_at: { type: string, format: date-time }
+        submitted_at: { type: string, format: date-time, nullable: true }
+        score: { type: integer, nullable: true }
+
+    Answer:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        attempt_id: { type: string, format: uuid }
+        question_id: { type: string, format: uuid }
+        selected_option_id: { type: string, format: uuid }
+
+  responses:
+    BadRequest:
+      description: Invalid input
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Unauthorized:
+      description: Missing or invalid authentication
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Forbidden:
+      description: Authenticated but not permitted
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    NotFound:
+      description: Resource does not exist
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+    Conflict:
+      description: Duplicate or conflicting resource
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+paths:
+  /register:
+    post:
+      tags: [Authentication]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name: { type: string }
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                role: { type: string, enum: [student, teacher, admin], default: student }
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Log in and receive a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /quizzes:
+    get:
+      tags: [Quizzes]
+      summary: List all quizzes
+      responses:
+        '200':
+          description: List of quizzes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Quiz' }
+    post:
+      tags: [Quizzes]
+      summary: Create a quiz
+      security: [{ bearerAuth: [] }]
+      description: "Requires role: teacher or admin"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, duration_minutes]
+              properties:
+                title: { type: string }
+                description: { type: string }
+                duration_minutes: { type: integer, minimum: 1 }
+      responses:
+        '201':
+          description: Quiz created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quiz' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+
+  /quizzes/{quizID}:
+    get:
+      tags: [Quizzes]
+      summary: Get a quiz by ID
+      parameters:
+        - name: quizID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Quiz found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Quiz' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /quizzes/{quizID}/questions:
+    get:
+      tags: [Questions]
+      summary: List questions for a quiz
+      parameters:
+        - name: quizID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of questions
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Question' }
+    post:
+      tags: [Questions]
+      summary: Add a question to a quiz
+      security: [{ bearerAuth: [] }]
+      description: "Requires role: teacher or admin"
+      parameters:
+        - name: quizID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string }
+      responses:
+        '201':
+          description: Question created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Question' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /questions/{questionID}:
+    get:
+      tags: [Questions]
+      summary: Get a question by ID
+      parameters:
+        - name: questionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Question found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Question' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /questions/{questionID}/options:
+    get:
+      tags: [Options]
+      summary: List options for a question
+      parameters:
+        - name: questionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of options
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Option' }
+    post:
+      tags: [Options]
+      summary: Add an option to a question
+      security: [{ bearerAuth: [] }]
+      description: "Requires role: teacher or admin"
+      parameters:
+        - name: questionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text, is_correct]
+              properties:
+                text: { type: string }
+                is_correct: { type: boolean }
+      responses:
+        '201':
+          description: Option created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Option' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /quizzes/{quizID}/attempts:
+    post:
+      tags: [Attempts]
+      summary: Start an attempt on a quiz
+      security: [{ bearerAuth: [] }]
+      description: "Requires authentication (any role)"
+      parameters:
+        - name: quizID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Attempt started
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attempt' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+    get:
+      tags: [Teacher]
+      summary: View all attempts for a quiz (teacher/admin only)
+      security: [{ bearerAuth: [] }]
+      description: "Requires role: teacher (must own the quiz) or admin"
+      parameters:
+        - name: quizID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: List of attempt summaries
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AttemptSummary' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /attempts/{attemptID}:
+    get:
+      tags: [Attempts]
+      summary: Get a single attempt's result
+      security: [{ bearerAuth: [] }]
+      description: "Requires authentication. Own attempt, owning teacher, or admin."
+      parameters:
+        - name: attemptID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Attempt found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attempt' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /my-attempts:
+    get:
+      tags: [Attempts]
+      summary: Get the current user's attempt history
+      security: [{ bearerAuth: [] }]
+      responses:
+        '200':
+          description: List of the caller's attempts
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Attempt' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+
+  /attempts/{attemptID}/answers:
+    post:
+      tags: [Attempts]
+      summary: Submit an answer to a question during an attempt
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: attemptID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [question_id, selected_option_id]
+              properties:
+                question_id: { type: string, format: uuid }
+                selected_option_id: { type: string, format: uuid }
+      responses:
+        '201':
+          description: Answer recorded
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Answer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /attempts/{attemptID}/answers/{questionID}:
+    put:
+      tags: [Attempts]
+      summary: Update a previously submitted answer
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: attemptID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: questionID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [selected_option_id]
+              properties:
+                selected_option_id: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Answer updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Answer' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
+
+  /attempts/{attemptID}/submit:
+    post:
+      tags: [Attempts]
+      summary: Submit an attempt for scoring
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: attemptID
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Attempt scored and marked submitted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Attempt' }
+        '400': { $ref: '#/components/responses/BadRequest' }
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '409': { $ref: '#/components/responses/Conflict' }
