@@ -2,37 +2,47 @@ package main
 
 import (
 	"context"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/joho/godotenv"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"log"
+	"log/slog"
 	"net/http"
+	"os"
 	"quiz-backend/config"
 	"quiz-backend/handler"
 	"quiz-backend/model"
 	"quiz-backend/repository"
 	"quiz-backend/service"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/joho/godotenv"
+	httpSwagger "github.com/swaggo/http-swagger"
 )
 
 func main() {
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: slog.LevelInfo,
+	}))
+	slog.SetDefault(logger)
 	if err := godotenv.Load(); err != nil {
-		log.Println("no .env file found, relying on real environment variables")
+		slog.Info("no .env file found, relying on real environment variables")
 	}
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("invalid configuration: %v", err)
+		slog.Error("invalid configuration: %v", "error", err)
+		os.Exit(1)
 	}
 	ctx := context.Background()
 
 	pool, err := pgxpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		log.Fatalf("unable to create connection pool: %v", err)
+		slog.Error("unable to create connection pool: %v", "error", err)
+		os.Exit(1)
 	}
 	defer pool.Close()
 	if err := pool.Ping(ctx); err != nil {
-		log.Fatalf("unable to reach the database: %v", err)
+		slog.Error("unable to reach the database: %v", "error", err)
+		os.Exit(1)
 	}
-	log.Println("Connected to PostgreSQL")
+	slog.Info("Connected to PostgreSQL")
 	mux := http.NewServeMux()
 	quizRepo := repository.NewQuizRepository(pool)
 	quizService := service.NewQuizService(quizRepo)
@@ -72,6 +82,10 @@ func main() {
 	userRepo := repository.NewUserRepository(pool)
 	authService := service.NewAuthService(userRepo, cfg.JWTSecret)
 	authHandler := handler.NewAuthHandler(authService)
+
+	healthHandler := handler.NewHealthHandler(pool)
+	mux.HandleFunc("GET /health", healthHandler.Health)
+	mux.HandleFunc("GET /ready", healthHandler.Ready)
 
 	mux.HandleFunc("POST /register", authHandler.Register)
 	mux.HandleFunc("POST /login", authHandler.Login)
@@ -121,6 +135,7 @@ func main() {
 		httpSwagger.URL("/docs/openapi.yaml"),
 	))
 
-	log.Printf("Starting server in %s mode on :%s", cfg.Environment, cfg.ServerPort)
-	log.Fatal(http.ListenAndServe(":"+cfg.ServerPort, mux))
+	loggedMux := handler.LoggingMiddleware(handler.RequestIDMiddleware(mux))
+	slog.Info("Starting server", "port", cfg.ServerPort, "environment", cfg.Environment)
+	log.Fatal(http.ListenAndServe(":"+cfg.ServerPort, loggedMux))
 }

@@ -4,12 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
-	"golang.org/x/crypto/bcrypt"
+	"log/slog"
 	"quiz-backend/apperror"
 	"quiz-backend/model"
 	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type AuthService struct {
@@ -67,6 +69,7 @@ func (s *AuthService) Login(ctx context.Context, email, password string) (string
 	if err != nil {
 		return "", fmt.Errorf("failed to generate token: %w", err)
 	}
+	slog.Info("user logged in", "user_id", u.ID, "role", u.Role)
 	return token, nil
 }
 
