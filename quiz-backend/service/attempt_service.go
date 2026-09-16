@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"quiz-backend/apperror"
 	"quiz-backend/model"
 	"quiz-backend/repository"
@@ -101,6 +102,7 @@ func (s *AttemptService) SubmitAttempt(ctx context.Context, attemptID string) (m
 	if txErr != nil {
 		return model.Attempt{}, txErr
 	}
+	slog.Info("attempt submitted", "attempt_id", result.ID, "user_id", result.UserID, "score", *result.Score)
 	return result, nil
 }
 
