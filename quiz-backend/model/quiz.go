@@ -5,5 +5,5 @@ type Quiz struct {
 	Title           string `json:"title"`
 	Description     string `json:"description"`
 	DurationMinutes int    `json:"duration_minutes"`
-	CreatedBy       string `json:"created_by, omitempty"`
+	CreatedBy       string `json:"created_by"`
 }

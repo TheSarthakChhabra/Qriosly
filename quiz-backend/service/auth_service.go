@@ -8,6 +8,7 @@ import (
 	"quiz-backend/apperror"
 	"quiz-backend/model"
 	"time"
+	"unicode"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -23,24 +24,34 @@ func NewAuthService(userRepo UserRepo, jwtSecret string) *AuthService {
 	return &AuthService{userRepo: userRepo, jwtSecret: []byte(jwtSecret)}
 }
 
+func isValidPassword(password string) bool {
+	if len(password) < 8 {
+		return false
+	}
+	hasLetter, hasDigit := false, false
+	for _, c := range password {
+		switch {
+		case unicode.IsLetter(c):
+			hasLetter = true
+		case unicode.IsDigit(c):
+			hasDigit = true
+		}
+	}
+	return hasLetter && hasDigit
+}
+
 func (s *AuthService) Register(ctx context.Context, name, email, password, role string) (model.User, error) {
+	if !isValidPassword(password) {
+		return model.User{}, apperror.BadRequest("WEAK_PASSWORD", "password must be at least 8 characters and include both letters and numbers")
+	}
 	if _, err := s.userRepo.FindByEmail(ctx, email); err == nil {
 		return model.User{}, apperror.Conflict("EMAIL_ALREADY_EXISTS", "A user with this email already exists")
 	}
-
-	if role == "" {
-		role = model.RoleStudent
-	}
-
-	if role != model.RoleAdmin && role != model.RoleStudent && role != model.RoleTeacher {
-		return model.User{}, apperror.BadRequest("INVALID_ROLE", "Invalid role")
-	}
-
+	role = model.RoleStudent
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return model.User{}, fmt.Errorf("failed to hash password: %w", err)
 	}
-
 	u := model.User{
 		ID:           uuid.NewString(),
 		Name:         name,
@@ -85,8 +96,11 @@ func (s *AuthService) generateToken(userID, role string) (string, error) {
 
 func ParseToken(tokenString, secret string) (userID, role string, err error) {
 	token, err := jwt.Parse(tokenString, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, errors.New("unexpected signing method")
+		}
 		return []byte(secret), nil
-	})
+	}, jwt.WithValidMethods([]string{"HS256"}))
 	if err != nil || !token.Valid {
 		return "", "", errors.New("invalid or expired token")
 	}
