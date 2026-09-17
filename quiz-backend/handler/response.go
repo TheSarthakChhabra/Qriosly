@@ -32,7 +32,7 @@ func writeError(w http.ResponseWriter, err error) {
 }
 
 func writeJSON(w http.ResponseWriter, status int, body interface{}) {
-	w.Header().Set("Content-Type", "application-json")
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	json.NewEncoder(w).Encode(body)
 }

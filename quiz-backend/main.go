@@ -17,6 +17,14 @@ import (
 	httpSwagger "github.com/swaggo/http-swagger"
 )
 
+func maxBodySize(maxBytes int64) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			r.Body = http.MaxBytesReader(w, r.Body, maxBytes)
+			next.ServeHTTP(w, r)
+		})
+	}
+}
 func main() {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -87,8 +95,8 @@ func main() {
 	mux.HandleFunc("GET /health", healthHandler.Health)
 	mux.HandleFunc("GET /ready", healthHandler.Ready)
 
-	mux.HandleFunc("POST /register", authHandler.Register)
-	mux.HandleFunc("POST /login", authHandler.Login)
+	mux.Handle("POST /login", handler.RateLimitMiddleware(http.HandlerFunc(authHandler.Login)))
+	mux.Handle("POST /register", handler.RateLimitMiddleware(http.HandlerFunc(authHandler.Register)))
 	mux.Handle("POST /quizzes/{id}/attempts", handler.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(attemptHandler.StartAttempt)))
 
 	mux.Handle("POST /quizzes",
@@ -134,8 +142,8 @@ func main() {
 	mux.Handle("/swagger/", httpSwagger.Handler(
 		httpSwagger.URL("/docs/openapi.yaml"),
 	))
-
-	loggedMux := handler.LoggingMiddleware(handler.RequestIDMiddleware(mux))
-	slog.Info("Starting server", "port", cfg.ServerPort, "environment", cfg.Environment)
+	corsHandler := handler.CORSMiddleware(cfg.AllowedOrigin)(mux)
+	loggedMux := handler.LoggingMiddleware(handler.RequestIDMiddleware(maxBodySize(1 << 20)(corsHandler)))
+	slog.Info("starting server", "port", cfg.ServerPort, "environment", cfg.Environment)
 	log.Fatal(http.ListenAndServe(":"+cfg.ServerPort, loggedMux))
 }

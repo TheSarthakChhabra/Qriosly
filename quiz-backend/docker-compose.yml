@@ -8,6 +8,7 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SERVER_PORT: 8080
       ENVIRONMENT: development
+      ALLOWED_ORIGIN: ${ALLOWED_ORIGIN}
     depends_on:
       postgres:
         condition: service_healthy

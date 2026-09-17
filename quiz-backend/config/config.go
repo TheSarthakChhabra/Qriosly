@@ -6,20 +6,24 @@ import (
 )
 
 type Config struct {
-	DatabaseURL string
-	JWTSecret   string
-	ServerPort  string
-	Environment string
+	DatabaseURL   string
+	JWTSecret     string
+	ServerPort    string
+	Environment   string
+	AllowedOrigin string
 }
 
 func Load() (*Config, error) {
 	cfg := &Config{
-		DatabaseURL: os.Getenv("DATABASE_URL"),
-		JWTSecret:   os.Getenv("JWT_SECRET"),
-		ServerPort:  os.Getenv("SERVER_PORT"),
-		Environment: os.Getenv("ENVIRONMENT"),
+		DatabaseURL:   os.Getenv("DATABASE_URL"),
+		JWTSecret:     os.Getenv("JWT_SECRET"),
+		ServerPort:    os.Getenv("SERVER_PORT"),
+		Environment:   os.Getenv("ENVIRONMENT"),
+		AllowedOrigin: os.Getenv("ALLOWED_ORIGIN"),
 	}
-
+	if cfg.AllowedOrigin == "" {
+		cfg.AllowedOrigin = "http://localhost:3000"
+	}
 	if cfg.DatabaseURL == "" {
 		return nil, fmt.Errorf("DATABSE_URL is required but was not set")
 	}
