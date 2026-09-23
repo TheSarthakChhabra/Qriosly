@@ -50,7 +50,7 @@ export default function Login() {
                                     required
                               />
 
-                              {error && <p className="text-sm text-red-600">{error}</p>}
+                              {error && <p className="text-sm text-red-500">{error}</p>}
 
                               <Button type="submit" disabled={loading}>
                                     {loading ? 'Logging in...' : 'Login'}
