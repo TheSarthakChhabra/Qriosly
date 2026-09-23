@@ -6,7 +6,7 @@ import TeacherDashboard from './pages/TeacherDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import QuizDetails from './pages/QuizDetails';
 import ProtectedRoute from './components/ProtectedRoute';
-
+import AttemptPage from './pages/AttemptPage';
 function App() {
   return (
     <Routes>
@@ -43,6 +43,14 @@ function App() {
         element={
           <ProtectedRoute allowedRoles={['admin']}>
             <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/attempt/:attemptId"
+        element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <AttemptPage />
           </ProtectedRoute>
         }
       />
