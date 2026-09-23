@@ -37,7 +37,7 @@ func (r *QuestionRepository) FindByQuizID(ctx context.Context, quizID string) ([
 		return nil, fmt.Errorf("failed to query questions: %w", err)
 	}
 	defer rows.Close()
-	var questions []model.Question
+	questions := []model.Question{}
 	for rows.Next() {
 		var q model.Question
 		if err := rows.Scan(&q.ID, &q.QuizID, &q.Text); err != nil {
