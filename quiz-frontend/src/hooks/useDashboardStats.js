@@ -13,14 +13,17 @@ export function useDashboardStats() {
                               api.get('/my-attempts'),
                         ]);
 
-                        const completed = attempts.filter((a) => a.status === 'submitted');
+                        const safeQuizzes = quizzes ?? [];
+                        const safeAttempts = attempts ?? [];
+
+                        const completed = safeAttempts.filter((a) => a.status === 'submitted');
                         const scores = completed.map((a) => a.score).filter((s) => s !== null && s !== undefined);
                         const average = scores.length > 0
                               ? Math.round(scores.reduce((sum, s) => sum + s, 0) / scores.length)
                               : null;
 
                         setStats({
-                              availableQuizzes: quizzes.length,
+                              availableQuizzes: safeQuizzes.length,
                               completedAttempts: completed.length,
                               averageScore: average,
                         });
