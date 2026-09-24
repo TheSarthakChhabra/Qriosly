@@ -3,7 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
-	"log"
+	"log/slog"
 	"net/http"
 	"quiz-backend/apperror"
 )
@@ -25,7 +25,7 @@ func writeError(w http.ResponseWriter, err error) {
 		})
 		return
 	}
-	log.Printf("internal error: %v", err)
+	slog.Error("internal error: %v", err)
 	writeJSON(w, http.StatusInternalServerError, errorResponse{
 		Error: errorBody{Code: "INTERNAL_ERROR", Message: "An unexpected error occured"},
 	})

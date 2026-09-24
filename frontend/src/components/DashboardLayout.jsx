@@ -28,7 +28,7 @@ export default function DashboardLayout({ children }) {
                                           key={link.to}
                                           to={link.to}
                                           className={`px-3 py-2 rounded-lg text-sm font-medium ${location.pathname === link.to
-                                                      ? 'bg-indigo-50 text-indigo-700'
+                                                      ? 'bg-slate-100 text-slate-900 font-semibold'
                                                       : 'text-slate-600 hover:bg-slate-50'
                                                 }`}
                                     >

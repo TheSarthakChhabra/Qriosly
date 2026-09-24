@@ -12,13 +12,23 @@ async function request(path, options = {}) {
             headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+      let res;
+      try {
+            res = await fetch(`${API_URL}${path}`, { ...options, headers });
+      } catch (networkErr) {
+            const err = new Error('Network error — please check your connection.');
+            err.status = 0;
+            throw err;
+      }
 
       const data = await res.json().catch(() => null);
 
       if (!res.ok) {
             const message = data?.error?.message || 'Something went wrong';
-            throw new Error(message);
+            const err = new Error(message);
+            err.status = res.status;
+            err.code = data?.error?.code;
+            throw err;
       }
 
       return data;
