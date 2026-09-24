@@ -56,11 +56,11 @@ export default function QuizDetails() {
                         <div className="grid grid-cols-2 gap-4 mb-6">
                               <Card className="text-center">
                                     <p className="text-sm text-slate-500 mb-1">Questions</p>
-                                    <p className="text-2xl font-semibold text-indigo-700">{questionCount}</p>
+                                    <p className="text-2xl font-semibold text-slate-900">{questionCount}</p>
                               </Card>
                               <Card className="text-center">
                                     <p className="text-sm text-slate-500 mb-1">Duration</p>
-                                    <p className="text-2xl font-semibold text-indigo-700">{quiz.duration_minutes} min</p>
+                                    <p className="text-2xl font-semibold text-slate-900">{quiz.duration_minutes} min</p>
                               </Card>
                         </div>
 

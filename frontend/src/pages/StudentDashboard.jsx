@@ -9,7 +9,7 @@ import Button from '../components/Button';
 function StatCard({ label, value }) {
   return (
     <Card className="text-center">
-      <p className="text-sm text-slate-500 mb-1">{label}</p>
+      <p className="text-sm text-slate-900 mb-1">{label}</p>
       <p className="text-3xl font-semibold text-indigo-700">{value}</p>
     </Card>
   );

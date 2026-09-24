@@ -7,6 +7,9 @@ import AdminDashboard from './pages/AdminDashboard';
 import QuizDetails from './pages/QuizDetails';
 import ProtectedRoute from './components/ProtectedRoute';
 import AttemptPage from './pages/AttemptPage';
+import ReviewAttempt from './pages/ReviewAttempt';
+import ResultPage from './pages/ResultPage';
+import MyAttempts from './pages/MyAttempts'
 function App() {
   return (
     <Routes>
@@ -53,6 +56,18 @@ function App() {
             <AttemptPage />
           </ProtectedRoute>
         }
+      />
+      <Route
+        path="/attempt/:attemptId/review"
+        element={<ProtectedRoute allowedRoles={['student']}><ReviewAttempt /></ProtectedRoute>}
+      />
+      <Route
+        path="/result/:attemptId"
+        element={<ProtectedRoute allowedRoles={['student']}><ResultPage /></ProtectedRoute>}
+      />
+      <Route
+        path='/student/attempts'
+        element={<ProtectedRoute allowedRoles={['student']}><MyAttempts /></ProtectedRoute>}
       />
     </Routes>
   );

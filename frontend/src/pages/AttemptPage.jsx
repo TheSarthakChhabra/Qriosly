@@ -2,7 +2,9 @@ import { useParams } from 'react-router-dom';
 import { useState } from 'react';
 import { useAttempt } from '../hooks/useAttempt';
 import { useCountdown } from '../hooks/useCountdown';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../api/client';
+import { useLocation } from 'react-router-dom';
 import Card from '../components/Card';
 import Button from '../components/Button';
 import QuestionPalette from '../components/QuestionPalette';
@@ -11,12 +13,12 @@ import Timer from '../components/Timer';
 export default function AttemptPage() {
       const { attemptId } = useParams();
       const { attempt, quiz, questions, loading, error } = useAttempt(attemptId);
-
+      const navigate = useNavigate();
       const [currentIndex, setCurrentIndex] = useState(0);
-      const [answers, setAnswers] = useState({});
       const [answeredIds, setAnsweredIds] = useState(new Set());
       const [saveError, setSaveError] = useState('');
-
+      const location = useLocation();
+      const [answers, setAnswers] = useState(location.state?.answers || {});
       const deadline = attempt && quiz
             ? new Date(attempt.started_at).getTime() + quiz.duration_minutes * 60000
             : null;
@@ -30,22 +32,19 @@ export default function AttemptPage() {
 
       async function handleSelect(optionId) {
             if (expired) return;
-
             const questionId = currentQuestion.id;
             const previousSelection = answers[questionId];
-
+            const alreadyAnswered = !!previousSelection;
             setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
             setSaveError('');
-
             try {
-                  if (answeredIds.has(questionId)) {
+                  if (alreadyAnswered) {
                         await api.put(`/attempts/${attemptId}/answers/${questionId}`, { selected_option_id: optionId });
                   } else {
                         await api.post(`/attempts/${attemptId}/answers`, {
                               question_id: questionId,
                               selected_option_id: optionId,
                         });
-                        setAnsweredIds((prev) => new Set(prev).add(questionId));
                   }
             } catch (err) {
                   setSaveError(err.message);
@@ -76,7 +75,7 @@ export default function AttemptPage() {
                                                 key={opt.id}
                                                 onClick={() => handleSelect(opt.id)}
                                                 disabled={expired}
-                                                className={`text-left px-4 py-3 rounded-xl border transition-colors flex items-center ${selected ? 'border-indigo-700 bg-indigo-50' : 'border-slate-200 bg-white hover:bg-slate-50'
+                                                className={`text-left px-4 py-3 rounded-xl border transition-colors flex items-center ${selected ? 'border-slate-900 bg-slate-100' : 'border-slate-200 bg-white hover:bg-slate-50'
                                                       } ${expired ? 'opacity-50 cursor-not-allowed' : ''}`}
                                           >
                                                 <span
@@ -104,6 +103,12 @@ export default function AttemptPage() {
                                     onClick={() => setCurrentIndex((i) => i + 1)}
                               >
                                     Next
+                              </Button>
+                              <Button
+                                    variant="accent"
+                                    onClick={() => navigate(`/attempt/${attemptId}/review`, { state: { questions, answers } })}
+                              >
+                                    Review & Submit
                               </Button>
                         </div>
 
