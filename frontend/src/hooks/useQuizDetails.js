@@ -12,7 +12,7 @@ export function useQuizDetails(quizId) {
                   try {
                         const [quizData, questions] = await Promise.all([
                               api.get(`/quizzes/${quizId}`),
-                              api.get(`/quizzes/${quizId}/quuestions`),
+                              api.get(`/quizzes/${quizId}/questions`),
                         ]);
                         setQuiz(quizData);
                         setQuestionCount(questions.length);
