@@ -56,3 +56,32 @@ func (r *UserRepository) FindByID(ctx context.Context, id string) (model.User, e
 	}
 	return u, nil
 }
+
+func (r *UserRepository) FindAll(ctx context.Context) ([]model.User, error) {
+	rows, err := r.db.Query(ctx, `SELECT id, name, email, password_hash, role, created_at FROM users`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query users: %w", err)
+	}
+	defer rows.Close()
+
+	users := []model.User{}
+	for rows.Next() {
+		var u model.User
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.PasswordHash, &u.Role, &u.CreatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan user row: %w", err)
+		}
+		users = append(users, u)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("row iteration error: %w", err)
+	}
+	return users, nil
+}
+
+func (r *UserRepository) UpdateRole(ctx context.Context, id, role string) error {
+	_, err := r.db.Exec(ctx, `UPDATE users SET role = $1 WHERE id = $2`, role, id)
+	if err != nil {
+		return fmt.Errorf("failed to update user role: %w", err)
+	}
+	return nil
+}

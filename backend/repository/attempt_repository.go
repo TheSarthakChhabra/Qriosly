@@ -81,7 +81,7 @@ func (r *AnswerRepository) FindByAttemptID(ctx context.Context, attemptID string
 
 func (r *AttemptRepository) FindByUserID(ctx context.Context, userID string) ([]model.Attempt, error) {
 	rows, err := r.db.Query(ctx,
-		`SELECT id, quiz_id, user_id, started_at, score FROM attempts WHERE user_id =$1`,
+		`SELECT id, quiz_id, user_id, started_at, status, submitted_at, score FROM attempts WHERE user_id = $1`,
 		userID,
 	)
 	if err != nil {
@@ -89,17 +89,19 @@ func (r *AttemptRepository) FindByUserID(ctx context.Context, userID string) ([]
 	}
 	defer rows.Close()
 
-	var attempts []model.Attempt
+	attempts := []model.Attempt{}
 	for rows.Next() {
 		var a model.Attempt
-		if err := rows.Scan(&a.ID, &a.QuizID, &a.StartedAt, &a.SubmittedAt, &a.Score); err != nil {
+		if err := rows.Scan(&a.ID, &a.QuizID, &a.UserID, &a.StartedAt, &a.Status, &a.SubmittedAt, &a.Score); err != nil {
 			return nil, fmt.Errorf("failed to scan attempt row: %w", err)
 		}
 		attempts = append(attempts, a)
 	}
+
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
+
 	return attempts, nil
 }
 
@@ -113,10 +115,10 @@ func (r *AttemptRepository) FindByQuizID(ctx context.Context, quizID string) ([]
 	}
 	defer rows.Close()
 
-	var attempts []model.Attempt
+	attempts := []model.Attempt{}
 	for rows.Next() {
 		var a model.Attempt
-		if err := rows.Scan(&a.ID, &a.QuizID, &a.UserID, &a.StartedAt, &a.Status, &a.Score); err != nil {
+		if err := rows.Scan(&a.ID, &a.QuizID, &a.UserID, &a.StartedAt, &a.Status, &a.SubmittedAt, &a.Score); err != nil {
 			return nil, fmt.Errorf("failed to scan attempt row: %w", err)
 		}
 		attempts = append(attempts, a)
@@ -125,6 +127,7 @@ func (r *AttemptRepository) FindByQuizID(ctx context.Context, quizID string) ([]
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("row iteration error: %w", err)
 	}
+
 	return attempts, nil
 }
 

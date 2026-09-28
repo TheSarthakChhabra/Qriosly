@@ -142,6 +142,24 @@ func main() {
 	mux.Handle("/swagger/", httpSwagger.Handler(
 		httpSwagger.URL("/docs/openapi.yaml"),
 	))
+	mux.Handle("GET /questions/{id}/options",
+		handler.AuthMiddleware(cfg.JWTSecret)(http.HandlerFunc(optionHandler.GetOptionsByQuestionID)),
+	)
+
+	adminService := service.NewAdminService(userRepo)
+	adminHandler := handler.NewAdminHandler(adminService)
+
+	mux.Handle("GET /admin/users",
+		handler.AuthMiddleware(cfg.JWTSecret)(handler.RequireRole(model.RoleAdmin)(
+			http.HandlerFunc(adminHandler.ListUsers),
+		)),
+	)
+	mux.Handle("PUT /admin/users/{id}/role",
+		handler.AuthMiddleware(cfg.JWTSecret)(handler.RequireRole(model.RoleAdmin)(
+			http.HandlerFunc(adminHandler.UpdateUserRole),
+		)),
+	)
+
 	corsHandler := handler.CORSMiddleware(cfg.AllowedOrigin)(mux)
 	loggedMux := handler.LoggingMiddleware(handler.RequestIDMiddleware(maxBodySize(1 << 20)(corsHandler)))
 	slog.Info("starting server", "port", cfg.ServerPort, "environment", cfg.Environment)

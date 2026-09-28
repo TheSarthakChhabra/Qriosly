@@ -1,14 +1,27 @@
-import { useAuth } from '../context/AuthContext';
-import Button from '../components/Button';
+import { useAdminStats } from '../hooks/useAdminStats';
+import AdminLayout from '../components/AdminLayout';
+import Card from '../components/Card';
 
-export default function StudentDashboard() {
-      const { user, logout } = useAuth();
+function StatCard({ label, value }) {
+      return (
+            <Card className="text-center">
+                  <p className="text-sm text-slate-500 mb-1">{label}</p>
+                  <p className="text-3xl font-semibold text-slate-900">{value}</p>
+            </Card>
+      );
+}
+
+export default function AdminDashboard() {
+      const { stats, loading } = useAdminStats();
 
       return (
-            <div className="min-h-screen bg-slate-50 p-8">
-                  <h1 className="text-2xl font-semibold mb-2">Student Dashboard</h1>
-                  <p className="text-slate-600 mb-4">Logged in as user ID: {user.id}</p>
-                  <Button variant="secondary" onClick={logout}>Logout</Button>
-            </div>
+            <AdminLayout>
+                  <h1 className="text-2xl font-semibold mb-6">Admin Dashboard</h1>
+                  <div className="grid grid-cols-3 gap-4">
+                        <StatCard label="Students" value={loading ? '...' : stats.students} />
+                        <StatCard label="Teachers" value={loading ? '...' : stats.teachers} />
+                        <StatCard label="Quizzes" value={loading ? '...' : stats.quizzes} />
+                  </div>
+            </AdminLayout>
       );
 }
