@@ -3,12 +3,45 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
+	"quiz-backend/model"
 	"quiz-backend/service"
 	"strings"
 )
 
 type OptionHandler struct {
 	service *service.OptionService
+}
+
+type PublicOption struct {
+	ID         string `json:"id"`
+	QuestionID string `json:"question_id"`
+	Text       string `json:"text"`
+}
+
+func toPublicOptions(options []model.Option) []PublicOption {
+	public := make([]PublicOption, len(options))
+	for i, o := range options {
+		public[i] = PublicOption{ID: o.ID, QuestionID: o.QuestionID, Text: o.Text}
+	}
+	return public
+}
+
+func (h *OptionHandler) GetOptionsByQuestionID(w http.ResponseWriter, r *http.Request) {
+	questionID := r.PathValue("id")
+
+	options, err := h.service.GetOptionsByQuestionID(r.Context(), questionID)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+
+	role, _ := RoleFromContext(r.Context())
+	if role == model.RoleTeacher || role == model.RoleAdmin {
+		writeJSON(w, http.StatusOK, options)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, toPublicOptions(options))
 }
 
 func NewOptionHandler(s *service.OptionService) *OptionHandler {
@@ -39,15 +72,4 @@ func (h *OptionHandler) CreateOption(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(option)
-}
-
-func (h *OptionHandler) GetOptionsByQuestionID(w http.ResponseWriter, r *http.Request) {
-	questionID := r.PathValue("id")
-	options, err := h.service.GetOptionsByQuestionID(r.Context(), questionID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "appliaction/json")
-	json.NewEncoder(w).Encode(options)
 }

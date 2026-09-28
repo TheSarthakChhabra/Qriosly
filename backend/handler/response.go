@@ -25,7 +25,7 @@ func writeError(w http.ResponseWriter, err error) {
 		})
 		return
 	}
-	slog.Error("internal error: %v", err)
+	slog.Error("internal error", "error", err)
 	writeJSON(w, http.StatusInternalServerError, errorResponse{
 		Error: errorBody{Code: "INTERNAL_ERROR", Message: "An unexpected error occured"},
 	})
